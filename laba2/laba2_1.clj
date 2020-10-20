@@ -1,37 +1,34 @@
 (ns laba2-1.core
   (:gen-class))
 
+(defn mini [fun x0 x1 dx]
+  (* (* (+ (fun x0) (fun x1)) 0.5) dx))
 
 
-(defn computation [fun x0 x1]
-  (+ (fun x0) (fun x1)))
+(defn integral [fun x1 dx]
+  (let [x0 (- x1 dx)]
+    (if (not= x1 0) (+ (mini fun x0 x1 dx) (integral-m fun x0 dx))
+        (mini fun x0 x1 dx))))
 
-(defn addition_division [fun x0 x1 dx]
-  (loop [c0 x0 c1 (+ x0 dx) buffer 0] 
-    (if (< c1 x1) 
-      (recur (+ c0 dx) (+ c1 dx) (+ (computation fun c0 c1) buffer))
-      (* (+ (computation fun c0 c1) buffer) (/ dx 2))
-        )))
+(def integral-m (memoize integral))
 
-
-
-(defn function [fun x]
-  memoize (fun x))
-
-(defn computation2 [fun x0 x1]
-  (+ (function fun x0) (function fun x1)))
-
-(defn addition_division2 [fun x0 x1 dx]
-  (loop [c0 x0 c1 (+ x0 dx) buffer 0]
-    (if (< c1 x1)
-      (recur (+ c0 dx) (+ c1 dx) (+ (computation2 fun c0 c1) buffer))
-      (* (+ (computation2 fun c0 c1) buffer) (/ dx 2)))))
-
-
-(do
-  (time (addition_division (fn [x] (* x x)) 0 1000 0.005))
-  (time (addition_division2 (fn [x] (* x x)) 0 1000 0.005))
-  
-  (time (addition_division (fn [x] (* x x)) 0 10000 0.0005))
-(time (addition_division2 (fn [x] (* x x)) 0 10000 0.0005))
-  )
+(def f #(* % %))
+(defn -main []
+  (print "num:100 -")
+  (time (integral f 100 1))
+  (println "---------")
+  (print "mem num:100 -")
+  (time (integral-m f 100 1))
+  (print "mem num:100 -")
+  (time (integral-m f 110 1))
+  (print "mem num:1100 -")
+  (time (integral-m f 100 1))
+  (print "mem num:1200 -")
+  (time (integral-m f 120 1))
+  (print "mem num:1300 -")
+  (time (integral-m f 130 1))
+  (print "mem num:1400 -")
+  (time (integral-m f 140 1))
+  (print "mem num:1500 -")
+  (time (integral-m f 150 1)))
+(-main)
