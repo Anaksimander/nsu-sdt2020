@@ -16,7 +16,7 @@
     )
     ))
 
-(defn my-filter [coll size_bloc]
+(defn my-filter [coll size_bloc pred]
   apply concat
   (doall
    (map deref
@@ -25,10 +25,18 @@
         ))))  
 
 (defn main []
-  (time(my-filter '(1 2 3 4 5 6) 2))
+  (time(my-filter '(1 2 3 4 5 6) 2 even?))
   (time(doall(filter heavy-pred '(1 2 3 4 5 6))))
   )
 
-(main)
+(time 
+ (->>
+  (separation '(1 2 3 4 5 6) 2)
+  (map #(future (doall (filter heavy-pred %))))
+  (doall)
+  (map deref)
+  (doall)
+  (apply concat)
+  ))
 
-;(time (my-filter '(1 2 3 4 5 6) 2))
+;(time (main))
