@@ -6,48 +6,39 @@
     (Thread/sleep sleep)
     (apply f coll)))
 
-;; (defn my-filter [coll size_bloc pred-i]
-;;   (let [pred (heavy 100 pred-i)]
-;;     (apply concat
-;;            (doall
-;;             (map deref
-;;                  (doall
-;;                   (map #(future (doall (filter pred %))) (separation coll size_bloc))))))))
-
-
 (def heavy-pred (heavy 100 even?))
 
-(defn separation [coll size_bloc]
-  (loop [acc [], new_coll coll]
-    (if (>= size_bloc (count new_coll)) (conj acc (take size_bloc new_coll))
-        (recur (conj acc (take size_bloc new_coll)) (drop size_bloc new_coll)))))
+(defn separation [size_bloc coll]
+  (lazy-seq
+   (when-let [new_coll (seq coll)]
+     (let [bloc (doall (take size_bloc new_coll))]
+       (cons bloc (separation size_bloc (drop size_bloc coll)))))))
 
-(defn my-filter-mac [size_bloc pred-i]
+
+(defn my-filter-mac [ pred]
   (fn [coll]
-    (let [pred (heavy 100 pred-i)]
-      (->>
-       (separation coll size_bloc)
-       (map #(future (doall (filter pred %))))
-       (doall)
-       (map deref)
-       (doall)
-       (apply concat)))
+    (->>
+      coll
+     (map #(future (doall(filter pred %))))
+     (doall)
+     (map deref)
+     (apply concat)
+     (lazy-seq))))
+
+
+(defn my-filter-batch [size_chank size_batch pred coll]
+     (->>
+      (separation size_chank coll)
+      (separation size_batch) 
+      (map #((my-filter-mac pred) %))
+      (apply concat)
+      ;(lazy-cat)
+      ))
+
+(defn main []
+  (let [f (my-filter-batch 2 2 heavy-pred (range))]
+    (time (take 5 f))
+    (time (doall(take 5 f)))
     )
   )
 
-
-(defn my-filter-batch [coll size_bloc size_batch_elem pred-i]
-  (let [new_coll (separation coll size_batch_elem)
-        my-filter (my-filter-mac size_bloc pred-i)]
-    (apply concat(doall(map #(my-filter %) new_coll)))
-    
-   )
-  )
-
-(defn main []
-  (time (my-filter-batch '(1 2 3 4 5 6 7 8 9 10) 2 4 even?))
-  ;(time (my-filter-mac '(1 2 3 4 5 6 7 8 9 10) 2 even?))
-  ;(time(doall(filter heavy-pred '(1 2 3 4 5 6))))
-  )
-
-(main)
