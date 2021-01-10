@@ -1,4 +1,4 @@
-(ns core.core
+(ns laba4.core
   (:gen-class))
 
 (defn variable [name];перемеенная 
@@ -104,6 +104,32 @@
     @calculate_rule)
    expr vr new_vr))
 
+(defn to_simple [expr];упрощение
+  (cond
+    (log_or? expr)
+    (apply log_or (reduce #(if (log_or? %2) (concat %1 (rest %2)) (cons %2 %1)) (cons '() (distinct (map to_simple (rest expr))))))
+
+    (log_and? expr)
+    (apply log_and (reduce #(if (log_and? %2) (concat %1 (rest %2)) (cons %2 %1)) (cons '() (distinct (map to_simple (rest expr))))))
+    :else expr))
+
+(defn exch [expr1 expr2]
+  (if (log_or? expr1)
+    (if (log_or? expr2)
+      (for [x (rest expr1) y (rest expr2)] (log_and x y))
+      (for [x (rest expr1)] (log_and x expr2)))
+    (if (log_or? expr2)
+      (for [x (rest expr2)] (log_and expr1 x))
+      (log_and expr1 expr2))))
+
+(defn distib [expr]
+  (cond
+    (log_or? expr) (apply log_or (map distib (rest expr)))
+    (log_and? expr)
+    (let [args (map distib (rest expr))]
+      (reduce #(apply log_or (exch %1 %2)) args))
+    :else expr))
+
 (declare convert_b)
 
 (def convert_rule ;
@@ -148,31 +174,8 @@
       (cons (first expr) (map #(negat_miss %) (rest expr))));продолжаем поиск в глубину
     expr))
 
-(defn to_simple [expr];упрощение
-  (cond
-    (log_or? expr)
-    (apply log_or (reduce #(if (log_or? %2) (concat %1 (rest %2)) (cons %2 %1)) (cons '() (distinct (map to_simple (rest expr))))))
-    
-    (log_and? expr)
-    (apply log_and (reduce #(if (log_and? %2) (concat %1 (rest %2)) (cons %2 %1)) (cons '() (distinct (map to_simple (rest expr))))))
-    :else expr))
 
-(defn exch [expr1 expr2]
-  (if (log_or? expr1)
-    (if (log_or? expr2)
-      (for [x (rest expr1) y (rest expr2)] (log_and x y))
-      (for [x (rest expr1)] (log_and x expr2)))
-    (if (log_or? expr2)
-      (for [x (rest expr2)] (log_and expr1 x))
-      (log_and expr1 expr2))))
 
-(defn distib [expr]
-  (cond
-    (log_or? expr) (apply log_or (map distib (rest expr)))
-    (log_and? expr)
-    (let [args (map distib (rest expr))]
-      (reduce #(apply log_or (exch %1 %2)) args))
-    :else expr))
 
 (defn convert_dnf [expr];преобразование выражение expr в дизьюнктивную нормальную форму
   (->> expr
@@ -184,14 +187,13 @@
        ))
 
 
-
 (convert_dnf
  (log_and (log_or (variable :x) (variable :y)) (log_or (variable :x) (variable :y))))
 
 (convert_dnf
- (log_and (log_or (variable :x) (variable :z)) (variable :y)))
+ (log_neg (log_or (log_or (log_neg (variable :x)) (variable :y)) (log_neg (log_or (log_neg (variable :y)) (variable :z))))))
 
 (calculate
  (variable :x)
  (variable :x);какую переменную заменим 
- (variable :a));на что заменяем
+ (variable :a))
